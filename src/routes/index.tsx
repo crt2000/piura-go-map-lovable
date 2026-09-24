@@ -1,24 +1,207 @@
 import { createFileRoute } from "@tanstack/react-router";
+import {
+  AlertTriangle, ArrowDown, BusFront, ChevronDown, ChevronRight, Clock3,
+  Gauge, LocateFixed, LockKeyhole, Mail, Map as MapIcon, MapPin, Menu,
+  Minus, Navigation, Plus, Route as RouteIcon, Search, Signal, TrafficCone,
+  User, UserRound, UsersRound, X,
+} from "lucide-react";
+import { useEffect, useRef, useState, type ButtonHTMLAttributes, type PointerEvent as ReactPointerEvent } from "react";
+import logoAsset from "@/assets/piurago-logo.png.asset.json";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
 export const Route = createFileRoute("/")({
-  component: Index,
+  head: () => ({
+    meta: [
+      { title: "PiuraGo — Mapa de rutas urbanas" },
+      { name: "description", content: "Consulta rutas, paraderos, tiempos de llegada y congestión en Piura." },
+      { property: "og:title", content: "PiuraGo — Mapa de rutas urbanas" },
+      { property: "og:description", content: "Tu guía de transporte urbano en Piura." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
+  component: PiuraGo,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
-function Index() {
+type View = "routes" | "map" | "traffic";
+type UserMode = "guest" | "logged";
+type AuthMode = "login" | "register";
+type SheetState = "peek" | "mid" | "full";
+
+const routes = [
+  { id: "line10", name: "Línea 10", path: "Castilla • Catacaos • Mercado Central", eta: "4 min", arrival: "12:28", tone: "blue", stops: ["Mercado Central", "Óvalo Bolognesi", "Universidad Nacional de Piura", "Terminal Catacaos"] },
+  { id: "interurban", name: "Combi Interurbana Ruta B", path: "Piura • Veintiséis de Octubre", eta: "7 min", arrival: "12:31", tone: "green", stops: ["Plaza de Armas", "Av. Grau", "Complejo de Mercados", "Veintiséis de Octubre"] },
+  { id: "line6", name: "Línea 6 — Emutsa", path: "Castilla • Centro • Santa Rosa", eta: "11 min", arrival: "12:35", tone: "orange", stops: ["Castilla", "Puente Sánchez Cerro", "Centro de Piura", "Santa Rosa"] },
+];
+
+const navItems = [
+  { id: "routes" as const, label: "Rutas", icon: RouteIcon },
+  { id: "map" as const, label: "Mapa", icon: MapIcon },
+  { id: "traffic" as const, label: "Congestión", icon: TrafficCone },
+];
+
+function Button({ className = "", ...props }: ButtonHTMLAttributes<HTMLButtonElement>) {
+  return <button className={`pg-button ${className}`} {...props} />;
+}
+
+function Brand({ compact = false }: { compact?: boolean }) {
+  return <div className={`brand ${compact ? "brand-compact" : ""}`}><span className="brand-mark"><img src={logoAsset.url} alt="" /></span>{!compact && <strong>PiuraGo</strong>}</div>;
+}
+
+function PiuraGo() {
+  const [entered, setEntered] = useState(false);
+  const [authMode, setAuthMode] = useState<AuthMode>("login");
+  const [userMode, setUserMode] = useState<UserMode>("guest");
+  const [showLocation, setShowLocation] = useState(false);
+  const [view, setView] = useState<View>("map");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  const enter = (mode: UserMode) => {
+    setUserMode(mode);
+    setEntered(true);
+    setView("map");
+    window.setTimeout(() => setShowLocation(true), 260);
+  };
+
+  if (!entered) return <AuthScreen mode={authMode} setMode={setAuthMode} onEnter={enter} />;
+
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
+    <div className="app-shell">
+      <aside className={`desktop-sidebar ${sidebarOpen ? "open" : "closed"}`}>
+        <div className="sidebar-top"><Brand compact={!sidebarOpen} /><Button className="icon-button quiet" aria-label="Contraer menú" onClick={() => setSidebarOpen(v => !v)}><Menu /></Button></div>
+        <nav className="side-nav">{navItems.map(item => <Button key={item.id} className={`nav-button ${view === item.id ? "active" : ""}`} onClick={() => setView(item.id)}><item.icon />{sidebarOpen && <span>{item.label}</span>}</Button>)}</nav>
+        <div className={`identity-card ${userMode}`}><span className="avatar"><UserRound /></span>{sidebarOpen && <div><small>{userMode === "guest" ? "Modo actual" : "Sesión activa"}</small><strong>{userMode === "guest" ? "Pasajero anónimo" : "Hola Ramirez!"}</strong></div>}</div>
+      </aside>
+
+      <main className="app-main">
+        <header className="mobile-header"><Brand /><Button className="session-link" onClick={() => userMode === "guest" ? setEntered(false) : setUserMode("guest")}>{userMode === "guest" ? "Iniciar sesión" : "Hola Ramirez!"}</Button></header>
+        <div className="desktop-topbar"><div><small>Movilidad urbana de Piura</small><h1>{view === "map" ? "Mapa en vivo" : view === "routes" ? "Rutas y paraderos" : "Congestión"}</h1></div><Button className="session-link" onClick={() => userMode === "guest" ? setEntered(false) : setUserMode("guest")}>{userMode === "guest" ? "Iniciar sesión" : "Hola Ramirez!"}</Button></div>
+        <section className="view-stage" key={view}>
+          {view === "map" && <MapExperience userMode={userMode} />}
+          {view === "routes" && <RoutesView onGo={(id) => { setView("map"); sessionStorage.setItem("piurago-route", id); }} />}
+          {view === "traffic" && <TrafficView />}
+        </section>
+      </main>
+
+      <nav className="bottom-nav">{navItems.map(item => <Button key={item.id} className={`bottom-nav-button ${view === item.id ? "active" : ""}`} onClick={() => setView(item.id)}><item.icon /><span>{item.label}</span></Button>)}</nav>
+      {showLocation && <LocationModal onClose={() => setShowLocation(false)} />}
     </div>
   );
+}
+
+function AuthScreen({ mode, setMode, onEnter }: { mode: AuthMode; setMode: (m: AuthMode) => void; onEnter: (m: UserMode) => void }) {
+  const registering = mode === "register";
+  return <main className="auth-page">
+    <section className="auth-intro"><div className="auth-brand"><Brand /><p>Tu ruta por Piura, más clara y más cerca.</p></div><div className="auth-illustration" aria-hidden="true"><RouteIcon /><span>Rutas en tiempo real</span></div></section>
+    <section className="auth-panel"><div className="auth-form-wrap">
+      <div className="auth-mobile-brand"><Brand /></div>
+      <p className="eyebrow">Bienvenido a PiuraGo</p><h1>{registering ? "Crea tu cuenta" : "Inicia sesión"}</h1><p className="auth-copy">{registering ? "Regístrate para acompañar tu trayecto y colaborar con la comunidad." : "Consulta cómo llegar y cuándo pasará tu próxima combi."}</p>
+      <form onSubmit={(e) => { e.preventDefault(); onEnter("logged"); }}>
+        {registering && <label>Nombre completo<div className="input-wrap"><User /><input required placeholder="Ramirez Castro" /></div></label>}
+        <label>Correo electrónico<div className="input-wrap"><Mail /><input required type="email" placeholder="nombre@correo.com" /></div></label>
+        <label>Contraseña<div className="input-wrap"><LockKeyhole /><input required type="password" placeholder="••••••••" /></div></label>
+        <Button className="primary wide" type="submit">{registering ? "Crear cuenta" : "Iniciar sesión"}<ChevronRight /></Button>
+      </form>
+      <div className="alt-label"><span />o Inicia sesión con:<span /></div>
+      <div className="auth-pill"><Button onClick={() => onEnter("logged")}><Mail />Correo institucional</Button><i /><Button onClick={() => onEnter("logged")}><span className="google-g">G</span>Cuenta de Google</Button></div>
+      <p className="switch-auth">{registering ? "¿Ya tienes una cuenta?" : "¿No tienes una cuenta?"}<Button className="text-button" onClick={() => setMode(registering ? "login" : "register")}>{registering ? "Inicia sesión" : "Regístrate aquí"}</Button></p>
+      <Button className="guest-button" onClick={() => onEnter("guest")}><UserRound />Continuar como pasajero anónimo</Button>
+    </div></section>
+  </main>;
+}
+
+function LocationModal({ onClose }: { onClose: () => void }) {
+  const [closing, setClosing] = useState(false);
+  const close = () => { setClosing(true); window.setTimeout(onClose, 180); };
+  return <div className={`modal-layer ${closing ? "closing" : ""}`}><div className="location-modal" role="dialog" aria-modal="true" aria-labelledby="location-title"><div className="location-symbol"><LocateFixed /></div><p className="eyebrow">UBICACIÓN SIMULADA</p><h2 id="location-title">Encuentra lo que está cerca</h2><p>PiuraGo usa una ubicación de demostración para mostrar tu posición, las rutas cercanas y sus tiempos de llegada.</p><Button className="primary wide" onClick={close}><Navigation />Activar ubicación</Button><Button className="secondary wide" onClick={close}>Continuar sin activar ubicación</Button><small>No se utilizará tu GPS real.</small></div></div>;
+}
+
+function MapExperience({ userMode }: { userMode: UserMode }) {
+  const [destination, setDestination] = useState(false);
+  const [routeVisible, setRouteVisible] = useState(false);
+  const [vehiclesVisible, setVehiclesVisible] = useState(false);
+  const [peopleVisible, setPeopleVisible] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [sheet, setSheet] = useState<SheetState>("peek");
+  const [selected, setSelected] = useState<string | null>(null);
+  const [tripOpen, setTripOpen] = useState(false);
+  const [stopIndex, setStopIndex] = useState(0);
+  const [collaborating, setCollaborating] = useState(false);
+  const dragY = useRef<number | null>(null);
+  const activeRoute = routes.find(r => r.id === selected);
+
+  useEffect(() => {
+    const queuedRoute = sessionStorage.getItem("piurago-route");
+    if (queuedRoute) {
+      setSelected(queuedRoute);
+      setRouteVisible(true);
+      setVehiclesVisible(true);
+      setPeopleVisible(true);
+      sessionStorage.removeItem("piurago-route");
+    }
+  }, []);
+  useEffect(() => {
+    if (!destination) return;
+    setRouteVisible(false); setVehiclesVisible(false); setPeopleVisible(false);
+    const r = window.setTimeout(() => setRouteVisible(true), 3000);
+    const v = window.setTimeout(() => setVehiclesVisible(true), 3380);
+    const p = window.setTimeout(() => setPeopleVisible(true), 3760);
+    return () => { clearTimeout(r); clearTimeout(v); clearTimeout(p); };
+  }, [destination]);
+
+  const chooseRoute = (id: string) => { setSelected(id); setDestination(false); setRouteVisible(true); setVehiclesVisible(true); setPeopleVisible(true); setSheet("peek"); setTripOpen(false); setStopIndex(0); };
+  const locate = () => { setLocating(true); window.setTimeout(() => setLocating(false), 700); };
+  const onDragEnd = (e: ReactPointerEvent) => {
+    if (dragY.current === null) return;
+    const dy = e.clientY - dragY.current;
+    setSheet(dy < -45 ? (sheet === "peek" ? "mid" : "full") : dy > 45 ? (sheet === "full" ? "mid" : "peek") : sheet);
+    dragY.current = null;
+  };
+
+  return <div className="map-experience">
+    <div className={`map-canvas ${locating ? "is-locating" : ""}`}>
+      <svg className="city-map" viewBox="0 0 1000 720" preserveAspectRatio="xMidYMid slice" aria-label="Mapa ilustrado de Piura">
+        <rect className="map-ground" width="1000" height="720" />
+        <path className="river" d="M-40 520 C160 400 290 610 480 485 S760 380 1040 470" />
+        <g className="minor-roads"><path d="M40 90H960M10 185H900M70 300H1010M-20 410H930M120 610H980"/><path d="M135 10V700M280-20V680M430 30V720M590-20V680M760 20V720M900-10V700"/><path d="M20 650L860 20M-30 280L560 730M350-20L1040 580"/></g>
+        <g className="major-roads"><path d="M0 205C240 250 420 165 660 220S890 350 1040 290"/><path d="M210 -30C260 170 360 300 485 400S720 590 780 750"/><path d="M-20 620C190 515 390 505 560 390S800 180 1020 115"/></g>
+        <g className="district-labels"><text x="180" y="120">PIURA</text><text x="690" y="170">CASTILLA</text><text x="130" y="640">VEINTISÉIS DE OCTUBRE</text><text x="720" y="610">CATACAOS</text></g>
+        {(routeVisible || selected) && <g className="route-line"><path d={selected === "interurban" ? "M190 570 C290 500 350 430 420 375 S540 275 610 215" : selected === "line6" ? "M745 160 C630 205 570 315 475 385 S300 470 245 550" : "M270 545 C330 480 380 425 465 375 S610 290 730 250"}/><circle cx="270" cy="545" r="8"/><circle cx="465" cy="375" r="8"/><circle cx="730" cy="250" r="8"/></g>}
+        <g className="current-location"><circle cx="270" cy="545" r="25"/><circle cx="270" cy="545" r="9"/></g>
+        {destination && <g className="destination-pin"><path d="M465 335c-17 0-31 14-31 31 0 24 31 52 31 52s31-28 31-52c0-17-14-31-31-31z"/><circle cx="465" cy="366" r="9"/></g>}
+        {vehiclesVisible && <g className="vehicle-markers"><g transform="translate(380 430)"><circle r="23"/><text x="-11" y="7">10</text></g><g transform="translate(600 290)"><circle r="23"/><text x="-10" y="7">B</text></g></g>}
+        {peopleVisible && <g className="people-markers"><g transform="translate(335 485)"><circle r="14"/><circle cy="-3" r="4"/><path d="M-6 7c2-7 10-7 12 0"/></g><g transform="translate(550 320)"><circle r="14"/><circle cy="-3" r="4"/><path d="M-6 7c2-7 10-7 12 0"/></g><g transform="translate(680 265)"><circle r="14"/><circle cy="-3" r="4"/><path d="M-6 7c2-7 10-7 12 0"/></g></g>}
+      </svg>
+      <div className="map-search"><Button aria-label="Buscar destino" onClick={() => { setDestination(true); setSelected(null); }}><Search /><span>{destination ? "Mercado Central de Piura" : "¿A dónde quieres ir?"}</span>{destination && <X className="search-clear" onClick={(e) => { e.stopPropagation(); setDestination(false); setRouteVisible(false); }} />}</Button>{destination && !routeVisible && <div className="finding"><span className="finding-dot" />Buscando la mejor ruta…</div>}</div>
+      <div className="map-tools"><Button className="icon-button map-control" aria-label="Acercar"><Plus /></Button><Button className="icon-button map-control" aria-label="Alejar"><Minus /></Button><Button className="icon-button map-control locate" aria-label="Centrar ubicación" onClick={locate}><LocateFixed /></Button></div>
+      <div className={`mode-chip ${userMode}`}><UserRound />{userMode === "guest" ? "Modo anónimo" : "Sesión activa"}</div>
+      {routeVisible && !selected && <div className="eta-bubble"><Clock3 /><div><small>Línea 10 más cercana</small><strong>4 min</strong></div></div>}
+    </div>
+
+    <section className={`route-sheet ${sheet} ${selected ? "trip-sheet" : ""}`}>
+      <div className="drag-zone" onPointerDown={(e) => { dragY.current = e.clientY; e.currentTarget.setPointerCapture(e.pointerId); }} onPointerUp={onDragEnd}><span className="drag-handle" /><Button className="sheet-toggle" aria-label="Cambiar tamaño del panel" onClick={() => setSheet(sheet === "peek" ? "mid" : sheet === "mid" ? "full" : "peek")}><ChevronDown /></Button></div>
+      {activeRoute ? <TripPanel route={activeRoute} userMode={userMode} open={tripOpen} setOpen={setTripOpen} stopIndex={stopIndex} advance={() => setStopIndex(i => Math.min(i + 1, activeRoute.stops.length - 1))} collaborating={collaborating} setCollaborating={setCollaborating} /> : <RouteList onGo={chooseRoute} />}
+    </section>
+  </div>;
+}
+
+function RouteList({ onGo }: { onGo: (id: string) => void }) {
+  return <div className="sheet-content"><div className="section-heading"><div><p className="eyebrow">EN MOVIMIENTO</p><h2>Rutas cercanas</h2></div><Button className="text-button">Ver todas</Button></div><div className="route-cards">{routes.map((route, i) => <article className="route-card" key={route.id}><div className={`route-number ${route.tone}`}><BusFront /><span>{i === 0 ? "10" : i === 1 ? "B" : "6"}</span></div><div className="route-info"><h3>{route.name}</h3><p>{route.path}</p><div className="route-meta"><span><Clock3 />Llega {route.arrival}</span><strong>ETA {route.eta}</strong></div></div><Button className="primary compact" onClick={() => onGo(route.id)}>Ir<ChevronRight /></Button></article>)}</div></div>;
+}
+
+function TripPanel({ route, userMode, open, setOpen, stopIndex, advance, collaborating, setCollaborating }: { route: typeof routes[number]; userMode: UserMode; open: boolean; setOpen: (v: boolean) => void; stopIndex: number; advance: () => void; collaborating: boolean; setCollaborating: (v: boolean) => void }) {
+  return <div className="sheet-content trip-content"><div className="trip-summary"><div className="route-number blue"><BusFront /><span>{route.id === "line10" ? "10" : route.id === "interurban" ? "B" : "6"}</span></div><div><p className="eyebrow">RUTA SELECCIONADA</p><h2>{route.name}</h2><p>{route.path}</p></div><Button className={`icon-button quiet ${open ? "rotated" : ""}`} onClick={() => setOpen(!open)} aria-label="Expandir hoja de ruta"><ChevronDown /></Button></div>
+    <div className="current-stop"><div><small>Paradero actual</small><strong>{route.stops[stopIndex]}</strong><span>{stopIndex === route.stops.length - 1 ? "Destino final" : `Siguiente: ${route.stops[stopIndex + 1]}`}</span></div><div className="time-left"><strong>{Math.max(0, 25 - stopIndex * 7)}</strong><small>min</small></div></div>
+    <div className="trip-actions">{userMode === "logged" ? <><Button className="primary" onClick={advance} disabled={stopIndex === route.stops.length - 1}>Marcar como superada</Button><Button className={`secondary ${collaborating ? "active" : ""}`} onClick={() => setCollaborating(!collaborating)}><Signal />{collaborating ? "Compartiendo" : "Colaborar"}</Button></> : <div className="guest-notice"><LockKeyhole /><span>Inicia sesión para confirmar tu abordaje y colaborar.</span></div>}</div>
+    <div className={`itinerary ${open ? "open" : ""}`}><div className="itinerary-title"><h3>Hoja de ruta</h3><span>{route.stops.length} paraderos</span></div>{route.stops.map((stop, i) => <div className={`stop-row ${i === stopIndex ? "current" : ""} ${i < stopIndex ? "passed" : ""}`} key={stop}><div className="stop-line"><span className="stop-dot" />{i < route.stops.length - 1 && <i />}</div><div><strong>{stop}</strong><span>{i === 0 ? "0 min" : `+${[6, 14, 25][i - 1] ?? i * 7} min`}</span></div>{i === stopIndex && <em>Actual</em>}</div>)}</div>
+  </div>;
+}
+
+function RoutesView({ onGo }: { onGo: (id: string) => void }) {
+  return <div className="content-view"><div className="content-lead"><p className="eyebrow">TRANSPORTE URBANO</p><h2>Encuentra tu ruta</h2><p>Revisa recorridos, paraderos principales y tiempos estimados antes de salir.</p></div><div className="route-search-bar"><Search /><input placeholder="Buscar línea, zona o paradero" /></div><div className="route-grid">{routes.map((route, index) => <article className="detail-route-card" key={route.id}><div className={`route-number ${route.tone}`}><BusFront /><span>{index === 0 ? "10" : index === 1 ? "B" : "6"}</span></div><div><h3>{route.name}</h3><p>{route.path}</p></div><div className="stops-preview">{route.stops.slice(0, 3).map((stop, i) => <span key={stop}><i />{stop}{i < 2 && <b />}</span>)}</div><div className="card-footer"><div><small>Próxima unidad</small><strong>{route.eta}</strong></div><Button className="primary" onClick={() => onGo(route.id)}>Ver en mapa<ChevronRight /></Button></div></article>)}</div></div>;
+}
+
+function TrafficView() {
+  const [period, setPeriod] = useState("Ahora");
+  const bars = [34, 48, 42, 66, 91, 82, 58, 46];
+  return <div className="content-view traffic-view"><div className="content-lead"><p className="eyebrow">HORAS CALIENTES</p><h2>Congestión en Piura</h2><p>Estado estimado de los principales corredores de transporte urbano.</p></div><div className="period-tabs">{["Ahora", "Mañana", "Tarde", "Noche"].map(p => <Button key={p} className={period === p ? "active" : ""} onClick={() => setPeriod(p)}>{p}</Button>)}</div><div className="traffic-layout"><section className="traffic-chart"><div className="chart-heading"><div><small>Nivel general</small><strong>Moderado</strong></div><span className="status medium"><Signal />Flujo variable</span></div><div className="bars">{bars.map((h, i) => <div key={i} className="bar-col"><span className={`bar ${h > 80 ? "hot" : h > 60 ? "warm" : "cool"}`} style={{ height: `${h}%` }} /><small>{["6", "8", "10", "12", "14", "16", "18", "20"][i]}h</small></div>)}</div></section><section className="metrics"><article><Clock3 /><div><small>Demora promedio</small><strong>+12 min</strong></div></article><article><Gauge /><div><small>Velocidad promedio</small><strong>18 km/h</strong></div></article><article><AlertTriangle /><div><small>Puntos críticos</small><strong>3 activos</strong></div></article></section></div><section className="critical-section"><div className="section-heading"><div><p className="eyebrow">TRAMOS CRÍTICOS</p><h3>Mayor congestión ahora</h3></div></div>{[{name:"Av. Sánchez Cerro — Mercado", delay:"+18 min", level:"Alta"},{name:"Óvalo Grau — Av. Loreto",delay:"+11 min",level:"Media"},{name:"Puente Cáceres — Castilla",delay:"+8 min",level:"Media"}].map((item, i) => <article className="critical-row" key={item.name}><span className={`rank r${i}`}>{i + 1}</span><div><strong>{item.name}</strong><small>Velocidad estimada: {12 + i * 4} km/h</small></div><span className={`level l${i}`}>{item.level}</span><strong>{item.delay}</strong></article>)}</section></div>;
 }
