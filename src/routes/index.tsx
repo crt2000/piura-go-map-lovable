@@ -6,7 +6,7 @@ import {
   User, UserRound, UsersRound, X,
 } from "lucide-react";
 import { useEffect, useRef, useState, type ButtonHTMLAttributes, type PointerEvent as ReactPointerEvent } from "react";
-import logoAsset from "@/assets/piurago-logo.png.asset.json";
+import logoAsset from "@/assets/piurago-brand.png.asset.json";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -73,12 +73,11 @@ function PiuraGo() {
         </div>
         <div className="sidebar-divider" aria-hidden="true" />
         <nav className="side-nav">{navItems.map(item => <Button key={item.id} className={`nav-button ${view === item.id ? "active" : ""}`} aria-label={!sidebarOpen ? item.label : undefined} title={!sidebarOpen ? item.label : undefined} onClick={() => setView(item.id)}><item.icon />{sidebarOpen && <span>{item.label}</span>}</Button>)}</nav>
-        <div className={`identity-card ${userMode}`}><span className="avatar"><UserRound /></span>{sidebarOpen && <div><small>{userMode === "guest" ? "Modo actual" : "Sesión activa"}</small><strong>{userMode === "guest" ? "Pasajero anónimo" : "Hola Ramirez!"}</strong></div>}</div>
       </aside>
 
       <main className="app-main">
-        <header className="mobile-header"><Brand /><Button className="session-link" onClick={() => userMode === "guest" ? setEntered(false) : setUserMode("guest")}>{userMode === "guest" ? "Iniciar sesión" : "Hola Ramirez!"}</Button></header>
-        <div className="desktop-topbar"><div><small>Movilidad urbana de Piura</small><h1>{view === "map" ? "Mapa en vivo" : view === "routes" ? "Rutas y paraderos" : "Congestión"}</h1></div><Button className="session-link" onClick={() => userMode === "guest" ? setEntered(false) : setUserMode("guest")}>{userMode === "guest" ? "Iniciar sesión" : "Hola Ramirez!"}</Button></div>
+        <header className="mobile-header"><Brand /><div className="session-cluster"><span className="user-pill">{userMode === "guest" ? "Anónimo" : "Sesión activa"}</span><Button className={`session-link ${userMode === "guest" ? "prominent" : ""}`} onClick={() => userMode === "guest" ? setEntered(false) : setUserMode("guest")}>{userMode === "guest" ? "Iniciar sesión" : "Hola Ramirez!"}</Button></div></header>
+        <div className="desktop-topbar"><div className="topbar-brand">{!sidebarOpen && <Brand />}</div><div className="session-cluster"><span className="user-pill">{userMode === "guest" ? "Anónimo" : "Sesión activa"}</span><Button className={`session-link ${userMode === "guest" ? "prominent" : ""}`} onClick={() => userMode === "guest" ? setEntered(false) : setUserMode("guest")}>{userMode === "guest" ? "Iniciar sesión" : "Hola Ramirez!"}</Button></div></div>
         <section className="view-stage" key={view}>
           {view === "map" && <MapExperience userMode={userMode} />}
           {view === "routes" && <RoutesView onGo={(id) => { setView("map"); sessionStorage.setItem("piurago-route", id); }} />}
@@ -177,7 +176,6 @@ function MapExperience({ userMode }: { userMode: UserMode }) {
       </svg>
       <div className="map-search"><Button aria-label="Buscar destino" onClick={() => { setDestination(true); setSelected(null); }}><Search /><span>{destination ? "Mercado Central de Piura" : "¿A dónde quieres ir?"}</span>{destination && <X className="search-clear" onClick={(e) => { e.stopPropagation(); setDestination(false); setRouteVisible(false); }} />}</Button>{destination && !routeVisible && <div className="finding"><span className="finding-dot" />Buscando la mejor ruta…</div>}</div>
       <div className="map-tools"><Button className="icon-button map-control" aria-label="Acercar"><Plus /></Button><Button className="icon-button map-control" aria-label="Alejar"><Minus /></Button><Button className="icon-button map-control locate" aria-label="Centrar ubicación" onClick={locate}><LocateFixed /></Button></div>
-      <div className={`mode-chip ${userMode}`}><UserRound />{userMode === "guest" ? "Modo anónimo" : "Sesión activa"}</div>
       {routeVisible && !selected && <div className="eta-bubble"><Clock3 /><div><small>Línea 10 más cercana</small><strong>4 min</strong></div></div>}
     </div>
 
