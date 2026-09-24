@@ -6,3 +6,4 @@
 - [x] Panel de rutas y adaptación móvil/escritorio
 - [x] Verificar selección, seguimiento, avance y congestión
 - [x] Ajustar logo completo y navegación de la barra lateral contraída
+- [x] Reubicar estado de sesión, marca contraída y rutas cercanas sobre el mapa
