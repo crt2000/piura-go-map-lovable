@@ -67,8 +67,12 @@ function PiuraGo() {
   return (
     <div className="app-shell">
       <aside className={`desktop-sidebar ${sidebarOpen ? "open" : "closed"}`}>
-        <div className="sidebar-top"><Brand compact={!sidebarOpen} /><Button className="icon-button quiet" aria-label="Contraer menú" onClick={() => setSidebarOpen(v => !v)}><Menu /></Button></div>
-        <nav className="side-nav">{navItems.map(item => <Button key={item.id} className={`nav-button ${view === item.id ? "active" : ""}`} onClick={() => setView(item.id)}><item.icon />{sidebarOpen && <span>{item.label}</span>}</Button>)}</nav>
+        <div className="sidebar-top">
+          {sidebarOpen && <Brand />}
+          <Button className="icon-button sidebar-toggle" aria-label={sidebarOpen ? "Contraer menú" : "Expandir menú"} title={sidebarOpen ? "Contraer menú" : "Expandir menú"} onClick={() => setSidebarOpen(v => !v)}><Menu /></Button>
+        </div>
+        <div className="sidebar-divider" aria-hidden="true" />
+        <nav className="side-nav">{navItems.map(item => <Button key={item.id} className={`nav-button ${view === item.id ? "active" : ""}`} aria-label={!sidebarOpen ? item.label : undefined} title={!sidebarOpen ? item.label : undefined} onClick={() => setView(item.id)}><item.icon />{sidebarOpen && <span>{item.label}</span>}</Button>)}</nav>
         <div className={`identity-card ${userMode}`}><span className="avatar"><UserRound /></span>{sidebarOpen && <div><small>{userMode === "guest" ? "Modo actual" : "Sesión activa"}</small><strong>{userMode === "guest" ? "Pasajero anónimo" : "Hola Ramirez!"}</strong></div>}</div>
       </aside>
 
