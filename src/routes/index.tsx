@@ -122,14 +122,23 @@ function MapExperience({ userMode }: { userMode: UserMode }) {
   const [peopleVisible, setPeopleVisible] = useState(false);
   const [locating, setLocating] = useState(false);
   const [sheet, setSheet] = useState<SheetState>("peek");
-  const [selected, setSelected] = useState<string | null>(() => sessionStorage.getItem("piurago-route"));
+  const [selected, setSelected] = useState<string | null>(null);
   const [tripOpen, setTripOpen] = useState(false);
   const [stopIndex, setStopIndex] = useState(0);
   const [collaborating, setCollaborating] = useState(false);
   const dragY = useRef<number | null>(null);
   const activeRoute = routes.find(r => r.id === selected);
 
-  useEffect(() => { if (selected) sessionStorage.removeItem("piurago-route"); }, [selected]);
+  useEffect(() => {
+    const queuedRoute = sessionStorage.getItem("piurago-route");
+    if (queuedRoute) {
+      setSelected(queuedRoute);
+      setRouteVisible(true);
+      setVehiclesVisible(true);
+      setPeopleVisible(true);
+      sessionStorage.removeItem("piurago-route");
+    }
+  }, []);
   useEffect(() => {
     if (!destination) return;
     setRouteVisible(false); setVehiclesVisible(false); setPeopleVisible(false);
