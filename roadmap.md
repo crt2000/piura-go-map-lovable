@@ -4,4 +4,4 @@
 - [x] Modal inicial de ubicación
 - [x] Mapa, búsqueda y aparición de ruta a los 3 segundos
 - [x] Panel de rutas y adaptación móvil/escritorio
-- [ ] Verificar selección, seguimiento, avance y congestión
+- [x] Verificar selección, seguimiento, avance y congestión
