@@ -224,7 +224,7 @@ button { border: 0; cursor: pointer; }
 .bars { display: flex; height: 205px; align-items: flex-end; justify-content: space-around; gap: .6rem; padding-top: 1.7rem; }
 .bar-col { display: flex; height: 100%; flex: 1; flex-direction: column; justify-content: flex-end; align-items: center; gap: .45rem; }
 .bar { width: min(30px,75%); min-height: 15px; border-radius: 4px 4px 1px 1px; animation: grow-bar .55s ease both; }
-.bar.cool { background: var(--primary); }.bar.warm { background: var(--warning); }.bar.hot { background: var(--danger); }
+.bar.low { background: var(--success); }.bar.medium { background: var(--primary); }.bar.high { background: var(--danger); }
 .bar-col small { color: var(--muted-foreground); font-size: .62rem; }
 .metrics { display: grid; gap: .7rem; }
 .metrics article { display: flex; align-items: center; gap: .8rem; padding: 1rem; }
