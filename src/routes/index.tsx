@@ -28,10 +28,37 @@ type AuthMode = "login" | "register";
 type SheetState = "peek" | "mid" | "full";
 
 const routes = [
-  { id: "line10", name: "Línea 10", path: "Castilla • Catacaos • Mercado Central", eta: "4 min", arrival: "12:28", tone: "blue", stops: ["Mercado Central", "Óvalo Bolognesi", "Universidad Nacional de Piura", "Terminal Catacaos"] },
-  { id: "interurban", name: "Combi Interurbana Ruta B", path: "Piura • Veintiséis de Octubre", eta: "7 min", arrival: "12:31", tone: "green", stops: ["Plaza de Armas", "Av. Grau", "Complejo de Mercados", "Veintiséis de Octubre"] },
-  { id: "line6", name: "Línea 6 — Emutsa", path: "Castilla • Centro • Santa Rosa", eta: "11 min", arrival: "12:35", tone: "orange", stops: ["Castilla", "Puente Sánchez Cerro", "Centro de Piura", "Santa Rosa"] },
+  { id: "line10", name: "Línea 10", operator: "El Moradito", badge: "10", path: "Castilla • Catacaos • Mercado Central", eta: "4 min", arrival: "12:28", tone: "blue", stops: ["Mercado Central", "Óvalo Bolognesi", "Universidad Nacional de Piura", "Terminal Catacaos"] },
+  { id: "interurban", name: "Ruta B", operator: "Combi Interurbana", badge: "B", path: "Piura • Veintiséis de Octubre", eta: "7 min", arrival: "12:31", tone: "green", stops: ["Plaza de Armas", "Av. Grau", "Complejo de Mercados", "Veintiséis de Octubre"] },
+  { id: "line6", name: "Línea 6", operator: "Emutsa", badge: "6", path: "Castilla • Centro • Santa Rosa", eta: "11 min", arrival: "12:35", tone: "orange", stops: ["Castilla", "Puente Sánchez Cerro", "Centro de Piura", "Santa Rosa"] },
 ];
+
+const popularRoutes = [
+  { id: "line1", name: "Línea 1", operator: "San Antonio", badge: "1", path: "Piura • Los Ejidos • Centro", eta: "6 min", arrival: "12:30", tone: "blue", stops: ["Los Ejidos", "Av. Sánchez Cerro", "Plaza de Armas", "Terminal Piura"] },
+  { id: "routeA", name: "Ruta A", operator: "Superstar", badge: "A", path: "Castilla • Aeropuerto • Centro", eta: "9 min", arrival: "12:33", tone: "green", stops: ["Castilla", "Aeropuerto", "Puente Cáceres", "Centro de Piura"] },
+  { id: "routeC", name: "Ruta C", operator: "Nueva Alternativa", badge: "C", path: "Veintiséis de Octubre • Centro", eta: "12 min", arrival: "12:36", tone: "orange", stops: ["Veintiséis de Octubre", "Av. Chulucanas", "Mercado Modelo", "Centro de Piura"] },
+];
+
+const otherRoutes = [
+  { id: "line4", name: "Línea 4", operator: "El Piuranito", badge: "4", path: "Piura • Santa Julia • Castilla", eta: "8 min", arrival: "12:32", tone: "blue", stops: ["Santa Julia", "Av. Guardia Civil", "Puente Sánchez Cerro", "Castilla"] },
+  { id: "line5", name: "Línea 5", operator: "Sol de Piura", badge: "5", path: "Centro • Miraflores • Catacaos", eta: "10 min", arrival: "12:34", tone: "green", stops: ["Centro de Piura", "Miraflores", "Óvalo Cáceres", "Catacaos"] },
+  { id: "routeD", name: "Ruta D", operator: "La Guadalupe", badge: "D", path: "Piura • Tacalá • Castilla", eta: "14 min", arrival: "12:38", tone: "orange", stops: ["Terminal Piura", "Av. Grau", "Tacalá", "Castilla"] },
+];
+
+const allRoutes = [...routes, ...popularRoutes, ...otherRoutes];
+
+const routeLines: Record<string, { d: string; from: [number, number]; to: [number, number] }> = {
+  line10: { d: "M270 545 C330 480 380 425 465 375 S610 290 730 250", from: [270, 545], to: [730, 250] },
+  interurban: { d: "M190 570 C290 500 350 430 420 375 S540 275 610 215", from: [190, 570], to: [610, 215] },
+  line6: { d: "M745 160 C630 205 570 315 475 385 S300 470 245 550", from: [745, 160], to: [245, 550] },
+  line1: { d: "M150 300 C260 340 330 390 430 400 S600 425 705 470", from: [150, 300], to: [705, 470] },
+  routeA: { d: "M820 240 C700 300 620 350 520 400 S360 480 262 520", from: [820, 240], to: [262, 520] },
+  routeC: { d: "M110 430 C230 440 330 420 450 380 S610 330 748 300", from: [110, 430], to: [748, 300] },
+  line4: { d: "M330 640 C400 560 470 500 540 440 S680 330 800 262", from: [330, 640], to: [800, 262] },
+  line5: { d: "M600 130 C560 240 520 330 470 400 S360 540 300 612", from: [600, 130], to: [300, 612] },
+  routeD: { d: "M70 200 C190 260 300 300 420 350 S600 430 762 520", from: [70, 200], to: [762, 520] },
+};
+
 
 const navItems = [
   { id: "routes" as const, label: "Rutas", icon: RouteIcon },
@@ -130,7 +157,8 @@ function MapExperience({ userMode }: { userMode: UserMode }) {
   const [stopIndex, setStopIndex] = useState(0);
   const [collaborating, setCollaborating] = useState(false);
   const dragY = useRef<number | null>(null);
-  const activeRoute = routes.find(r => r.id === selected);
+  const activeRoute = allRoutes.find(r => r.id === selected);
+  const mapLine = routeLines[selected ?? "line10"] ?? routeLines["line10"]!;
 
   useEffect(() => {
     const queuedRoute = sessionStorage.getItem("piurago-route");
@@ -168,7 +196,7 @@ function MapExperience({ userMode }: { userMode: UserMode }) {
         <g className="minor-roads"><path d="M40 90H960M10 185H900M70 300H1010M-20 410H930M120 610H980"/><path d="M135 10V700M280-20V680M430 30V720M590-20V680M760 20V720M900-10V700"/><path d="M20 650L860 20M-30 280L560 730M350-20L1040 580"/></g>
         <g className="major-roads"><path d="M0 205C240 250 420 165 660 220S890 350 1040 290"/><path d="M210 -30C260 170 360 300 485 400S720 590 780 750"/><path d="M-20 620C190 515 390 505 560 390S800 180 1020 115"/></g>
         <g className="district-labels"><text x="180" y="120">PIURA</text><text x="690" y="170">CASTILLA</text><text x="130" y="640">VEINTISÉIS DE OCTUBRE</text><text x="720" y="610">CATACAOS</text></g>
-        {(routeVisible || selected) && <g className="route-line"><path d={selected === "interurban" ? "M190 570 C290 500 350 430 420 375 S540 275 610 215" : selected === "line6" ? "M745 160 C630 205 570 315 475 385 S300 470 245 550" : "M270 545 C330 480 380 425 465 375 S610 290 730 250"}/><circle cx="270" cy="545" r="8"/><circle cx="465" cy="375" r="8"/><circle cx="730" cy="250" r="8"/></g>}
+        {(routeVisible || selected) && <g className="route-line"><path d={mapLine.d} /><circle cx={mapLine.from[0]} cy={mapLine.from[1]} r="8"/><circle cx={mapLine.to[0]} cy={mapLine.to[1]} r="8"/></g>}
         <g className="current-location"><circle cx="270" cy="545" r="25"/><circle cx="270" cy="545" r="9"/></g>
         {destination && <g className="destination-pin"><path d="M465 335c-17 0-31 14-31 31 0 24 31 52 31 52s31-28 31-52c0-17-14-31-31-31z"/><circle cx="465" cy="366" r="9"/></g>}
         {vehiclesVisible && <g className="vehicle-markers"><g transform="translate(380 430)"><circle r="23"/><text x="-11" y="7">10</text></g><g transform="translate(600 290)"><circle r="23"/><text x="-10" y="7">B</text></g></g>}
@@ -190,18 +218,22 @@ function MapExperience({ userMode }: { userMode: UserMode }) {
 }
 
 function RouteList({ onGo }: { onGo: (id: string) => void }) {
-  return <div className="sheet-content"><div className="section-heading"><div><p className="eyebrow">EN MOVIMIENTO</p><h2>Rutas cercanas</h2></div><Button className="text-button">Ver todas</Button></div><div className="route-cards">{routes.map((route, i) => <article className="route-card" key={route.id}><div className={`route-number ${route.tone}`}><BusFront /><span>{i === 0 ? "10" : i === 1 ? "B" : "6"}</span></div><div className="route-info"><h3>{route.name}</h3><p>{route.path}</p><div className="route-meta"><span><Clock3 />Llega {route.arrival}</span><strong>ETA {route.eta}</strong></div></div><Button className="primary compact" onClick={() => onGo(route.id)}>Ir<ChevronRight /></Button></article>)}</div></div>;
+  return <div className="sheet-content"><div className="section-heading"><div><p className="eyebrow">EN MOVIMIENTO</p><h2>Rutas cercanas</h2></div><Button className="text-button">Ver todas</Button></div><div className="route-cards">{routes.map((route) => <article className="route-card" key={route.id}><div className={`route-number ${route.tone}`}><BusFront /><span>{route.badge}</span></div><div className="route-info"><h3>{route.name} - {route.operator}</h3><p>{route.path}</p><div className="route-meta"><span><Clock3 />Llega {route.arrival}</span><strong>ETA {route.eta}</strong></div></div><Button className="primary compact" onClick={() => onGo(route.id)}>Ir<ChevronRight /></Button></article>)}</div></div>;
 }
 
 function TripPanel({ route, userMode, open, setOpen, stopIndex, advance, collaborating, setCollaborating }: { route: typeof routes[number]; userMode: UserMode; open: boolean; setOpen: (v: boolean) => void; stopIndex: number; advance: () => void; collaborating: boolean; setCollaborating: (v: boolean) => void }) {
-  return <div className="sheet-content trip-content"><div className="trip-summary"><div className="route-number blue"><BusFront /><span>{route.id === "line10" ? "10" : route.id === "interurban" ? "B" : "6"}</span></div><div><p className="eyebrow">RUTA SELECCIONADA</p><h2>{route.name}</h2><p>{route.path}</p></div><Button className={`icon-button quiet ${open ? "rotated" : ""}`} onClick={() => setOpen(!open)} aria-label="Expandir hoja de ruta"><ChevronDown /></Button></div>
+  return <div className="sheet-content trip-content"><div className="trip-summary"><div className={`route-number ${route.tone}`}><BusFront /><span>{route.badge}</span></div><div><p className="eyebrow">RUTA SELECCIONADA</p><h2>{route.name} - {route.operator}</h2><p>{route.path}</p></div><Button className={`icon-button quiet ${open ? "rotated" : ""}`} onClick={() => setOpen(!open)} aria-label="Expandir hoja de ruta"><ChevronDown /></Button></div>
     <div className="current-stop"><div className="current-stop-main"><div><small>Te encuentras en</small><strong>{route.stops[stopIndex]}</strong><span>{stopIndex === route.stops.length - 1 ? "Llegaste a tu destino" : `Siguiente: ${route.stops[stopIndex + 1]}`}</span></div><div className="time-left"><strong>{Math.max(0, 25 - stopIndex * 7)}</strong><small>min restantes</small></div></div>{userMode === "logged" ? <div className="trip-actions"><Button className="primary" onClick={advance} disabled={stopIndex === route.stops.length - 1}>Marcar como superada</Button>{!collaborating && <Button className="secondary" onClick={() => setCollaborating(true)}><Signal />Compartir ubicación</Button>}</div> : <div className="guest-notice"><LockKeyhole /><span>Inicia sesión para confirmar tu avance y compartir tu ubicación.</span></div>}</div>
     <div className={`itinerary ${open ? "open" : ""}`}><div className="itinerary-title"><h3>Hoja de ruta</h3><span>{route.stops.length} paraderos</span></div>{route.stops.map((stop, i) => <div className={`stop-row ${i === stopIndex ? "current" : ""} ${i < stopIndex ? "passed" : ""}`} key={stop}><div className="stop-line"><span className="stop-dot" />{i < route.stops.length - 1 && <i />}</div><div><strong>{stop}</strong><span>{i === 0 ? "0 min" : `+${[6, 14, 25][i - 1] ?? i * 7} min`}</span></div>{i === stopIndex && <em>Actual</em>}</div>)}</div>
   </div>;
 }
 
 function RoutesView({ onGo }: { onGo: (id: string) => void }) {
-  return <div className="content-view"><div className="content-lead"><p className="eyebrow">TRANSPORTE URBANO</p><h2>Encuentra tu ruta</h2><p>Revisa recorridos, paraderos principales y tiempos estimados antes de salir.</p></div><div className="route-search-bar"><Search /><input placeholder="Buscar línea, zona o paradero" /></div><div className="route-grid">{routes.map((route, index) => <article className="detail-route-card" key={route.id}><div className={`route-number ${route.tone}`}><BusFront /><span>{index === 0 ? "10" : index === 1 ? "B" : "6"}</span></div><div><h3>{route.name}</h3><p>{route.path}</p></div><div className="stops-preview">{route.stops.slice(0, 3).map((stop, i) => <span key={stop}><i />{stop}{i < 2 && <b />}</span>)}</div><div className="card-footer"><div><small>Próxima unidad</small><strong>{route.eta}</strong></div><Button className="primary" onClick={() => onGo(route.id)}>Ver en mapa<ChevronRight /></Button></div></article>)}</div></div>;
+  const renderCard = (route: typeof routes[number]) => <article className="detail-route-card" key={route.id}><div className={`route-number ${route.tone}`}><BusFront /><span>{route.badge}</span></div><div><h3>{route.name} - {route.operator}</h3><p>{route.path}</p></div><div className="stops-preview">{route.stops.slice(0, 3).map((stop, i) => <span key={stop}><i />{stop}{i < 2 && <b />}</span>)}</div><div className="card-footer"><div><small>Próxima unidad</small><strong>{route.eta}</strong></div><Button className="primary" onClick={() => onGo(route.id)}>Ver en mapa<ChevronRight /></Button></div></article>;
+  return <div className="content-view"><div className="content-lead"><p className="eyebrow">TRANSPORTE URBANO</p><h2>Encuentra tu ruta</h2><p>Revisa recorridos, paraderos principales y tiempos estimados antes de salir.</p></div><div className="route-search-bar"><Search /><input placeholder="Buscar línea, zona o paradero" /></div><div className="route-grid">{routes.map(renderCard)}</div>
+    <h3 className="routes-subtitle">Rutas más usadas</h3><div className="route-grid">{popularRoutes.map(renderCard)}</div>
+    <h3 className="routes-subtitle">Otras rutas más usadas</h3><div className="route-grid">{otherRoutes.map(renderCard)}</div>
+  </div>;
 }
 
 function TrafficView() {

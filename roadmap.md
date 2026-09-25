@@ -8,3 +8,4 @@
 - [x] Ajustar logo completo y navegación de la barra lateral contraída
 - [x] Reubicar estado de sesión, marca contraída y rutas cercanas sobre el mapa
 - [x] Evitar solapamiento entre panel y buscador; completar hoja de ruta y personas simuladas
+- [x] Añadir nombres de combi y dos grupos más de rutas (más usadas y otras rutas)
