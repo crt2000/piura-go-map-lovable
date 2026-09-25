@@ -158,7 +158,7 @@ function MapExperience({ userMode }: { userMode: UserMode }) {
   const [collaborating, setCollaborating] = useState(false);
   const dragY = useRef<number | null>(null);
   const activeRoute = allRoutes.find(r => r.id === selected);
-  const mapLine = routeLines[selected ?? "line10"] ?? routeLines.line10;
+  const mapLine = routeLines[selected ?? "line10"] ?? routeLines["line10"]!;
 
   useEffect(() => {
     const queuedRoute = sessionStorage.getItem("piurago-route");
