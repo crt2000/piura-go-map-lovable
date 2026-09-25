@@ -47,6 +47,18 @@ const otherRoutes = [
 
 const allRoutes = [...routes, ...popularRoutes, ...otherRoutes];
 
+const routeLines: Record<string, { d: string; from: [number, number]; to: [number, number] }> = {
+  line10: { d: "M270 545 C330 480 380 425 465 375 S610 290 730 250", from: [270, 545], to: [730, 250] },
+  interurban: { d: "M190 570 C290 500 350 430 420 375 S540 275 610 215", from: [190, 570], to: [610, 215] },
+  line6: { d: "M745 160 C630 205 570 315 475 385 S300 470 245 550", from: [745, 160], to: [245, 550] },
+  line1: { d: "M150 300 C260 340 330 390 430 400 S600 425 705 470", from: [150, 300], to: [705, 470] },
+  routeA: { d: "M820 240 C700 300 620 350 520 400 S360 480 262 520", from: [820, 240], to: [262, 520] },
+  routeC: { d: "M110 430 C230 440 330 420 450 380 S610 330 748 300", from: [110, 430], to: [748, 300] },
+  line4: { d: "M330 640 C400 560 470 500 540 440 S680 330 800 262", from: [330, 640], to: [800, 262] },
+  line5: { d: "M600 130 C560 240 520 330 470 400 S360 540 300 612", from: [600, 130], to: [300, 612] },
+  routeD: { d: "M70 200 C190 260 300 300 420 350 S600 430 762 520", from: [70, 200], to: [762, 520] },
+};
+
 
 const navItems = [
   { id: "routes" as const, label: "Rutas", icon: RouteIcon },
@@ -146,6 +158,7 @@ function MapExperience({ userMode }: { userMode: UserMode }) {
   const [collaborating, setCollaborating] = useState(false);
   const dragY = useRef<number | null>(null);
   const activeRoute = allRoutes.find(r => r.id === selected);
+  const mapLine = routeLines[selected ?? "line10"] ?? routeLines.line10;
 
   useEffect(() => {
     const queuedRoute = sessionStorage.getItem("piurago-route");
@@ -183,7 +196,7 @@ function MapExperience({ userMode }: { userMode: UserMode }) {
         <g className="minor-roads"><path d="M40 90H960M10 185H900M70 300H1010M-20 410H930M120 610H980"/><path d="M135 10V700M280-20V680M430 30V720M590-20V680M760 20V720M900-10V700"/><path d="M20 650L860 20M-30 280L560 730M350-20L1040 580"/></g>
         <g className="major-roads"><path d="M0 205C240 250 420 165 660 220S890 350 1040 290"/><path d="M210 -30C260 170 360 300 485 400S720 590 780 750"/><path d="M-20 620C190 515 390 505 560 390S800 180 1020 115"/></g>
         <g className="district-labels"><text x="180" y="120">PIURA</text><text x="690" y="170">CASTILLA</text><text x="130" y="640">VEINTISÉIS DE OCTUBRE</text><text x="720" y="610">CATACAOS</text></g>
-        {(routeVisible || selected) && <g className="route-line"><path d={selected === "interurban" ? "M190 570 C290 500 350 430 420 375 S540 275 610 215" : selected === "line6" ? "M745 160 C630 205 570 315 475 385 S300 470 245 550" : "M270 545 C330 480 380 425 465 375 S610 290 730 250"}/><circle cx="270" cy="545" r="8"/><circle cx="465" cy="375" r="8"/><circle cx="730" cy="250" r="8"/></g>}
+        {(routeVisible || selected) && <g className="route-line"><path d={mapLine.d} /><circle cx={mapLine.from[0]} cy={mapLine.from[1]} r="8"/><circle cx={mapLine.to[0]} cy={mapLine.to[1]} r="8"/></g>}
         <g className="current-location"><circle cx="270" cy="545" r="25"/><circle cx="270" cy="545" r="9"/></g>
         {destination && <g className="destination-pin"><path d="M465 335c-17 0-31 14-31 31 0 24 31 52 31 52s31-28 31-52c0-17-14-31-31-31z"/><circle cx="465" cy="366" r="9"/></g>}
         {vehiclesVisible && <g className="vehicle-markers"><g transform="translate(380 430)"><circle r="23"/><text x="-11" y="7">10</text></g><g transform="translate(600 290)"><circle r="23"/><text x="-10" y="7">B</text></g></g>}
