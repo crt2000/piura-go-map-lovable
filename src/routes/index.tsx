@@ -6,7 +6,7 @@ import {
   User, UserRound, UsersRound, X,
 } from "lucide-react";
 import { useEffect, useRef, useState, type ButtonHTMLAttributes, type PointerEvent as ReactPointerEvent } from "react";
-import logoAsset from "@/assets/piurago-brand.png.asset.json";
+import logoAsset from "@/assets/piurago-logo-circle.png";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -71,7 +71,7 @@ function Button({ className = "", ...props }: ButtonHTMLAttributes<HTMLButtonEle
 }
 
 function Brand({ compact = false }: { compact?: boolean }) {
-  return <div className={`brand ${compact ? "brand-compact" : ""}`}><span className="brand-mark"><img src={logoAsset.url} alt="" /></span>{!compact && <strong>PiuraGo</strong>}</div>;
+  return <div className={`brand ${compact ? "brand-compact" : ""}`}><span className="brand-mark"><img src={logoAsset} alt="" /></span>{!compact && <strong>PiuraGo</strong>}</div>;
 }
 
 function PiuraGo() {
