@@ -28,10 +28,25 @@ type AuthMode = "login" | "register";
 type SheetState = "peek" | "mid" | "full";
 
 const routes = [
-  { id: "line10", name: "Línea 10", path: "Castilla • Catacaos • Mercado Central", eta: "4 min", arrival: "12:28", tone: "blue", stops: ["Mercado Central", "Óvalo Bolognesi", "Universidad Nacional de Piura", "Terminal Catacaos"] },
-  { id: "interurban", name: "Combi Interurbana Ruta B", path: "Piura • Veintiséis de Octubre", eta: "7 min", arrival: "12:31", tone: "green", stops: ["Plaza de Armas", "Av. Grau", "Complejo de Mercados", "Veintiséis de Octubre"] },
-  { id: "line6", name: "Línea 6 — Emutsa", path: "Castilla • Centro • Santa Rosa", eta: "11 min", arrival: "12:35", tone: "orange", stops: ["Castilla", "Puente Sánchez Cerro", "Centro de Piura", "Santa Rosa"] },
+  { id: "line10", name: "Línea 10", operator: "El Moradito", badge: "10", path: "Castilla • Catacaos • Mercado Central", eta: "4 min", arrival: "12:28", tone: "blue", stops: ["Mercado Central", "Óvalo Bolognesi", "Universidad Nacional de Piura", "Terminal Catacaos"] },
+  { id: "interurban", name: "Ruta B", operator: "Combi Interurbana", badge: "B", path: "Piura • Veintiséis de Octubre", eta: "7 min", arrival: "12:31", tone: "green", stops: ["Plaza de Armas", "Av. Grau", "Complejo de Mercados", "Veintiséis de Octubre"] },
+  { id: "line6", name: "Línea 6", operator: "Emutsa", badge: "6", path: "Castilla • Centro • Santa Rosa", eta: "11 min", arrival: "12:35", tone: "orange", stops: ["Castilla", "Puente Sánchez Cerro", "Centro de Piura", "Santa Rosa"] },
 ];
+
+const popularRoutes = [
+  { id: "line1", name: "Línea 1", operator: "San Antonio", badge: "1", path: "Piura • Los Ejidos • Centro", eta: "6 min", arrival: "12:30", tone: "blue", stops: ["Los Ejidos", "Av. Sánchez Cerro", "Plaza de Armas", "Terminal Piura"] },
+  { id: "routeA", name: "Ruta A", operator: "Superstar", badge: "A", path: "Castilla • Aeropuerto • Centro", eta: "9 min", arrival: "12:33", tone: "green", stops: ["Castilla", "Aeropuerto", "Puente Cáceres", "Centro de Piura"] },
+  { id: "routeC", name: "Ruta C", operator: "Nueva Alternativa", badge: "C", path: "Veintiséis de Octubre • Centro", eta: "12 min", arrival: "12:36", tone: "orange", stops: ["Veintiséis de Octubre", "Av. Chulucanas", "Mercado Modelo", "Centro de Piura"] },
+];
+
+const otherRoutes = [
+  { id: "line4", name: "Línea 4", operator: "El Piuranito", badge: "4", path: "Piura • Santa Julia • Castilla", eta: "8 min", arrival: "12:32", tone: "blue", stops: ["Santa Julia", "Av. Guardia Civil", "Puente Sánchez Cerro", "Castilla"] },
+  { id: "line5", name: "Línea 5", operator: "Sol de Piura", badge: "5", path: "Centro • Miraflores • Catacaos", eta: "10 min", arrival: "12:34", tone: "green", stops: ["Centro de Piura", "Miraflores", "Óvalo Cáceres", "Catacaos"] },
+  { id: "routeD", name: "Ruta D", operator: "La Guadalupe", badge: "D", path: "Piura • Tacalá • Castilla", eta: "14 min", arrival: "12:38", tone: "orange", stops: ["Terminal Piura", "Av. Grau", "Tacalá", "Castilla"] },
+];
+
+const allRoutes = [...routes, ...popularRoutes, ...otherRoutes];
+
 
 const navItems = [
   { id: "routes" as const, label: "Rutas", icon: RouteIcon },
