@@ -194,6 +194,7 @@ function MapExperience({ userMode }: { userMode: UserMode }) {
     return { full: height * .04, mid: height * (selected ? .38 : .42), peek: Math.max(0, height - peekHeight) };
   };
   const onDragStart = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest("button")) return;
     const element = sheetRef.current;
     if (!element) return;
     const transform = window.getComputedStyle(element).transform;
@@ -235,7 +236,7 @@ function MapExperience({ userMode }: { userMode: UserMode }) {
 
   return <div className="map-experience">
     <div className={`map-canvas ${locating ? "is-locating" : ""}`}>
-      <svg className="city-map" viewBox="0 0 1000 720" preserveAspectRatio={isMobile ? "xMidYMin meet" : "xMidYMid slice"} aria-label="Mapa ilustrado de Piura">
+      <svg className="city-map" viewBox={isMobile ? "-80 -40 1160 800" : "0 0 1000 720"} preserveAspectRatio={isMobile ? "none" : "xMidYMid slice"} aria-label="Mapa ilustrado de Piura">
         <rect className="map-ground" width="1000" height="720" />
         <path className="river" d="M-40 520 C160 400 290 610 480 485 S760 380 1040 470" />
         <g className="minor-roads"><path d="M40 90H960M10 185H900M70 300H1010M-20 410H930M120 610H980"/><path d="M135 10V700M280-20V680M430 30V720M590-20V680M760 20V720M900-10V700"/><path d="M20 650L860 20M-30 280L560 730M350-20L1040 580"/></g>
