@@ -48,8 +48,9 @@ const otherRoutes = [
 
 const allRoutes = [...routes, ...popularRoutes, ...otherRoutes];
 
+const defaultMapLine = { d: "M270 545 C330 480 380 425 465 375 S610 290 730 250", from: [270, 545] as [number, number], to: [730, 250] as [number, number] };
 const routeLines: Record<string, { d: string; from: [number, number]; to: [number, number] }> = {
-  line10: { d: "M270 545 C330 480 380 425 465 375 S610 290 730 250", from: [270, 545], to: [730, 250] },
+  line10: defaultMapLine,
   interurban: { d: "M190 570 C290 500 350 430 420 375 S540 275 610 215", from: [190, 570], to: [610, 215] },
   line6: { d: "M745 160 C630 205 570 315 475 385 S300 470 245 550", from: [745, 160], to: [245, 550] },
   line1: { d: "M150 300 C260 340 330 390 430 400 S600 425 705 470", from: [150, 300], to: [705, 470] },
@@ -162,7 +163,7 @@ function MapExperience({ userMode }: { userMode: UserMode }) {
   const dragStart = useRef<{ y: number; translateY: number; time: number } | null>(null);
   const dragLast = useRef<{ y: number; time: number } | null>(null);
   const activeRoute = allRoutes.find(r => r.id === selected);
-  const mapLine = routeLines[selected ?? "line10"] ?? routeLines["line10"]!;
+  const mapLine = routeLines[selected ?? "line10"] ?? defaultMapLine;
 
   useEffect(() => {
     const queuedRoute = sessionStorage.getItem("piurago-route");
@@ -210,7 +211,8 @@ function MapExperience({ userMode }: { userMode: UserMode }) {
     if (!element || !start || !positions) return;
     const nextY = Math.min(positions.peek, Math.max(positions.full, start.translateY + e.clientY - start.y));
     element.style.transform = `translateY(${nextY}px)`;
-    dragLast.current = { y: e.clientY, time: performance.now() };
+    const now = performance.now();
+    if (!dragLast.current || now - dragLast.current.time > 40) dragLast.current = { y: e.clientY, time: now };
   };
   const onDragEnd = (e: ReactPointerEvent<HTMLDivElement>) => {
     const element = sheetRef.current;
