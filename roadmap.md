@@ -9,4 +9,4 @@
 - [x] Reubicar estado de sesión, marca contraída y rutas cercanas sobre el mapa
 - [x] Evitar solapamiento entre panel y buscador; completar hoja de ruta y personas simuladas
 - [x] Añadir nombres de combi y dos grupos más de rutas (más usadas y otras rutas)
-- [ ] Suavizar el arrastre del panel móvil y alejar el mapa para mostrar la ruta completa
+- [x] Suavizar el arrastre del panel móvil y alejar el mapa para mostrar la ruta completa
