@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState, type ButtonHTMLAttributes, type PointerEvent as ReactPointerEvent } from "react";
 import logoAsset from "@/assets/piurago-logo-circle.png";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -47,8 +48,9 @@ const otherRoutes = [
 
 const allRoutes = [...routes, ...popularRoutes, ...otherRoutes];
 
+const defaultMapLine = { d: "M270 545 C330 480 380 425 465 375 S610 290 730 250", from: [270, 545] as [number, number], to: [730, 250] as [number, number] };
 const routeLines: Record<string, { d: string; from: [number, number]; to: [number, number] }> = {
-  line10: { d: "M270 545 C330 480 380 425 465 375 S610 290 730 250", from: [270, 545], to: [730, 250] },
+  line10: defaultMapLine,
   interurban: { d: "M190 570 C290 500 350 430 420 375 S540 275 610 215", from: [190, 570], to: [610, 215] },
   line6: { d: "M745 160 C630 205 570 315 475 385 S300 470 245 550", from: [745, 160], to: [245, 550] },
   line1: { d: "M150 300 C260 340 330 390 430 400 S600 425 705 470", from: [150, 300], to: [705, 470] },
@@ -146,6 +148,7 @@ function LocationModal({ onClose }: { onClose: () => void }) {
 }
 
 function MapExperience({ userMode }: { userMode: UserMode }) {
+  const isMobile = useIsMobile();
   const [destination, setDestination] = useState(false);
   const [routeVisible, setRouteVisible] = useState(false);
   const [vehiclesVisible, setVehiclesVisible] = useState(false);
@@ -156,9 +159,11 @@ function MapExperience({ userMode }: { userMode: UserMode }) {
   const [tripOpen, setTripOpen] = useState(false);
   const [stopIndex, setStopIndex] = useState(0);
   const [collaborating, setCollaborating] = useState(false);
-  const dragY = useRef<number | null>(null);
+  const sheetRef = useRef<HTMLElement | null>(null);
+  const dragStart = useRef<{ y: number; translateY: number; time: number } | null>(null);
+  const dragLast = useRef<{ y: number; time: number } | null>(null);
   const activeRoute = allRoutes.find(r => r.id === selected);
-  const mapLine = routeLines[selected ?? "line10"] ?? routeLines["line10"]!;
+  const mapLine = routeLines[selected ?? "line10"] ?? defaultMapLine;
 
   useEffect(() => {
     const queuedRoute = sessionStorage.getItem("piurago-route");
@@ -181,16 +186,57 @@ function MapExperience({ userMode }: { userMode: UserMode }) {
 
   const chooseRoute = (id: string) => { setSelected(id); setDestination(false); setRouteVisible(true); setVehiclesVisible(true); setPeopleVisible(true); setSheet("peek"); setTripOpen(false); setStopIndex(0); };
   const locate = () => { setLocating(true); window.setTimeout(() => setLocating(false), 700); };
-  const onDragEnd = (e: ReactPointerEvent) => {
-    if (dragY.current === null) return;
-    const dy = e.clientY - dragY.current;
-    setSheet(dy < -45 ? (sheet === "peek" ? "mid" : "full") : dy > 45 ? (sheet === "full" ? "mid" : "peek") : sheet);
-    dragY.current = null;
+  const sheetPositions = () => {
+    const element = sheetRef.current;
+    if (!element) return null;
+    const height = element.getBoundingClientRect().height;
+    const peekHeight = selected ? 260 : 172;
+    return { full: height * .04, mid: height * (selected ? .38 : .42), peek: Math.max(0, height - peekHeight) };
+  };
+  const onDragStart = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest("button")) return;
+    const element = sheetRef.current;
+    if (!element) return;
+    const transform = window.getComputedStyle(element).transform;
+    const matrix = new DOMMatrixReadOnly(transform === "none" ? undefined : transform);
+    const now = performance.now();
+    dragStart.current = { y: e.clientY, translateY: matrix.m42, time: now };
+    dragLast.current = { y: e.clientY, time: now };
+    element.classList.add("dragging");
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const onDragMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const element = sheetRef.current;
+    const start = dragStart.current;
+    const positions = sheetPositions();
+    if (!element || !start || !positions) return;
+    const nextY = Math.min(positions.peek, Math.max(positions.full, start.translateY + e.clientY - start.y));
+    element.style.transform = `translateY(${nextY}px)`;
+    const now = performance.now();
+    if (!dragLast.current || now - dragLast.current.time > 40) dragLast.current = { y: e.clientY, time: now };
+  };
+  const onDragEnd = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const element = sheetRef.current;
+    const start = dragStart.current;
+    const last = dragLast.current;
+    const positions = sheetPositions();
+    if (!element || !start || !positions) return;
+    const currentY = Math.min(positions.peek, Math.max(positions.full, start.translateY + e.clientY - start.y));
+    const elapsed = Math.max(1, performance.now() - (last?.time ?? start.time));
+    const velocity = (e.clientY - (last?.y ?? start.y)) / elapsed;
+    const projectedY = currentY + velocity * 180;
+    const levels: Array<[SheetState, number]> = [["full", positions.full], ["mid", positions.mid], ["peek", positions.peek]];
+    const nextSheet = levels.reduce((closest, candidate) => Math.abs(candidate[1] - projectedY) < Math.abs(closest[1] - projectedY) ? candidate : closest)[0];
+    element.classList.remove("dragging");
+    element.style.removeProperty("transform");
+    dragStart.current = null;
+    dragLast.current = null;
+    setSheet(nextSheet);
   };
 
   return <div className="map-experience">
     <div className={`map-canvas ${locating ? "is-locating" : ""}`}>
-      <svg className="city-map" viewBox="0 0 1000 720" preserveAspectRatio="xMidYMid slice" aria-label="Mapa ilustrado de Piura">
+      <svg className="city-map" viewBox={isMobile ? "-80 -40 1160 800" : "0 0 1000 720"} preserveAspectRatio={isMobile ? "none" : "xMidYMid slice"} aria-label="Mapa ilustrado de Piura">
         <rect className="map-ground" width="1000" height="720" />
         <path className="river" d="M-40 520 C160 400 290 610 480 485 S760 380 1040 470" />
         <g className="minor-roads"><path d="M40 90H960M10 185H900M70 300H1010M-20 410H930M120 610H980"/><path d="M135 10V700M280-20V680M430 30V720M590-20V680M760 20V720M900-10V700"/><path d="M20 650L860 20M-30 280L560 730M350-20L1040 580"/></g>
@@ -210,8 +256,8 @@ function MapExperience({ userMode }: { userMode: UserMode }) {
       {routeVisible && !selected && <div className="eta-bubble"><Clock3 /><div><small>Línea 10 más cercana</small><strong>4 min</strong></div></div>}
     </div>
 
-    <section className={`route-sheet ${sheet} ${selected ? "trip-sheet" : ""}`}>
-      <div className="drag-zone" onPointerDown={(e) => { dragY.current = e.clientY; e.currentTarget.setPointerCapture(e.pointerId); }} onPointerUp={onDragEnd}><span className="drag-handle" /><Button className="sheet-toggle" aria-label="Cambiar tamaño del panel" onClick={() => setSheet(sheet === "peek" ? "mid" : sheet === "mid" ? "full" : "peek")}><ChevronDown /></Button></div>
+    <section ref={sheetRef} className={`route-sheet ${sheet} ${selected ? "trip-sheet" : ""}`}>
+      <div className="drag-zone" onPointerDown={onDragStart} onPointerMove={onDragMove} onPointerUp={onDragEnd} onPointerCancel={onDragEnd}><span className="drag-handle" /><Button className="sheet-toggle" aria-label="Cambiar tamaño del panel" onClick={() => setSheet(sheet === "peek" ? "mid" : sheet === "mid" ? "full" : "peek")}><ChevronDown /></Button></div>
       {activeRoute ? <TripPanel route={activeRoute} userMode={userMode} open={tripOpen} setOpen={setTripOpen} stopIndex={stopIndex} advance={() => setStopIndex(i => Math.min(i + 1, activeRoute.stops.length - 1))} collaborating={collaborating} setCollaborating={setCollaborating} /> : <RouteList onGo={chooseRoute} />}
     </section>
   </div>;
