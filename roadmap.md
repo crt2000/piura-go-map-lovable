@@ -10,3 +10,4 @@
 - [x] Evitar solapamiento entre panel y buscador; completar hoja de ruta y personas simuladas
 - [x] Añadir nombres de combi y dos grupos más de rutas (más usadas y otras rutas)
 - [x] Suavizar el arrastre del panel móvil y alejar el mapa para mostrar la ruta completa
+- [x] Encuadrar el mapa móvil por encima de Rutas cercanas sin cortar la línea azul
