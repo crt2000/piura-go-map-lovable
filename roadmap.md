@@ -11,3 +11,4 @@
 - [x] Añadir nombres de combi y dos grupos más de rutas (más usadas y otras rutas)
 - [x] Suavizar el arrastre del panel móvil y alejar el mapa para mostrar la ruta completa
 - [x] Encuadrar el mapa móvil por encima de Rutas cercanas sin cortar la línea azul
+- [x] Corregir el registro recortado en móvil y escritorio y ajustar el texto de acceso alternativo

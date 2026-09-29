@@ -133,7 +133,7 @@ function AuthScreen({ mode, setMode, onEnter }: { mode: AuthMode; setMode: (m: A
         <label>Contraseña<div className="input-wrap"><LockKeyhole /><input required type="password" placeholder="••••••••" /></div></label>
         <Button className="primary wide" type="submit">{registering ? "Crear cuenta" : "Iniciar sesión"}<ChevronRight /></Button>
       </form>
-      <div className="alt-label"><span />o Inicia sesión con:<span /></div>
+      <div className="alt-label"><span />{registering ? "o regístrate con:" : "o Inicia sesión con:"}<span /></div>
       <div className="auth-pill"><Button onClick={() => onEnter("logged")}><Mail />Correo institucional</Button><i /><Button onClick={() => onEnter("logged")}><span className="google-g">G</span>Cuenta de Google</Button></div>
       <p className="switch-auth">{registering ? "¿Ya tienes una cuenta?" : "¿No tienes una cuenta?"}<Button className="text-button" onClick={() => setMode(registering ? "login" : "register")}>{registering ? "Inicia sesión" : "Regístrate aquí"}</Button></p>
       <Button className="guest-button" onClick={() => onEnter("guest")}><UserRound />Continuar como pasajero anónimo</Button>
