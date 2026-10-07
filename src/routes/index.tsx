@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
-  AlertTriangle, ArrowDown, BusFront, ChevronDown, ChevronRight, Clock3,
-  Gauge, LocateFixed, LockKeyhole, Mail, Map as MapIcon, MapPin, Menu,
+  AlertTriangle, BusFront, Check, ChevronDown, ChevronRight, Clock3, CloudSun, Flag,
+  Gauge, LocateFixed, LockKeyhole, Mail, Map as MapIcon, Menu,
   Minus, Navigation, Plus, Route as RouteIcon, Search, Signal, TrafficCone,
-  User, UserRound, UsersRound, X,
+  User, UserRound, X,
 } from "lucide-react";
-import { useEffect, useRef, useState, type ButtonHTMLAttributes, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ButtonHTMLAttributes, type PointerEvent as ReactPointerEvent } from "react";
 import logoAsset from "@/assets/piurago-logo-circle.png";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -101,6 +101,7 @@ function PiuraGo() {
           <Button className="icon-button sidebar-toggle" aria-label={sidebarOpen ? "Contraer menú" : "Expandir menú"} title={sidebarOpen ? "Contraer menú" : "Expandir menú"} onClick={() => setSidebarOpen(v => !v)}><Menu /></Button>
         </div>
         <div className="sidebar-divider" aria-hidden="true" />
+        {sidebarOpen && <p className="sidebar-label">EXPLORAR</p>}
         <nav className="side-nav">{navItems.map(item => <Button key={item.id} className={`nav-button ${view === item.id ? "active" : ""}`} aria-label={!sidebarOpen ? item.label : undefined} title={!sidebarOpen ? item.label : undefined} onClick={() => setView(item.id)}><item.icon />{sidebarOpen && <span>{item.label}</span>}</Button>)}</nav>
       </aside>
 
