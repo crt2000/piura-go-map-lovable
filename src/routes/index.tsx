@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
-  AlertTriangle, ArrowDown, BusFront, ChevronDown, ChevronRight, Clock3,
-  Gauge, LocateFixed, LockKeyhole, Mail, Map as MapIcon, MapPin, Menu,
+  AlertTriangle, BusFront, Check, ChevronDown, ChevronRight, Clock3, CloudSun, Flag,
+  Gauge, LocateFixed, LockKeyhole, Mail, Map as MapIcon, Menu,
   Minus, Navigation, Plus, Route as RouteIcon, Search, Signal, TrafficCone,
-  User, UserRound, UsersRound, X,
+  User, UserRound, X,
 } from "lucide-react";
-import { useEffect, useRef, useState, type ButtonHTMLAttributes, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ButtonHTMLAttributes, type PointerEvent as ReactPointerEvent } from "react";
 import logoAsset from "@/assets/piurago-logo-circle.png";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -101,6 +101,7 @@ function PiuraGo() {
           <Button className="icon-button sidebar-toggle" aria-label={sidebarOpen ? "Contraer menú" : "Expandir menú"} title={sidebarOpen ? "Contraer menú" : "Expandir menú"} onClick={() => setSidebarOpen(v => !v)}><Menu /></Button>
         </div>
         <div className="sidebar-divider" aria-hidden="true" />
+        {sidebarOpen && <p className="sidebar-label">EXPLORAR</p>}
         <nav className="side-nav">{navItems.map(item => <Button key={item.id} className={`nav-button ${view === item.id ? "active" : ""}`} aria-label={!sidebarOpen ? item.label : undefined} title={!sidebarOpen ? item.label : undefined} onClick={() => setView(item.id)}><item.icon />{sidebarOpen && <span>{item.label}</span>}</Button>)}</nav>
       </aside>
 
@@ -144,8 +145,12 @@ function AuthScreen({ mode, setMode, onEnter }: { mode: AuthMode; setMode: (m: A
 function LocationModal({ onClose }: { onClose: () => void }) {
   const [closing, setClosing] = useState(false);
   const close = () => { setClosing(true); window.setTimeout(onClose, 180); };
-  return <div className={`modal-layer ${closing ? "closing" : ""}`}><div className="location-modal" role="dialog" aria-modal="true" aria-labelledby="location-title"><div className="location-symbol"><LocateFixed /></div><p className="eyebrow">UBICACIÓN SIMULADA</p><h2 id="location-title">Encuentra lo que está cerca</h2><p>PiuraGo usa una ubicación de demostración para mostrar tu posición, las rutas cercanas y sus tiempos de llegada.</p><Button className="primary wide" onClick={close}><Navigation />Activar ubicación</Button><Button className="secondary wide" onClick={close}>Continuar sin activar ubicación</Button><small>No se utilizará tu GPS real.</small></div></div>;
+  return <div className={`modal-layer ${closing ? "closing" : ""}`}><div className="location-modal" role="dialog" aria-modal="true" aria-labelledby="location-title"><div className="location-symbol"><LocateFixed /></div><p className="eyebrow">PERMISO DE UBICACIÓN</p><h2 id="location-title">¿Compartir tu ubicación?</h2><p>PiuraGo necesita acceso a tu ubicación para mostrarte el mapa y, si decides abordar una unidad, poder compartir tu posición como colaborador.</p><Button className="primary wide" onClick={close}><Navigation />Permitir ubicación</Button><Button className="secondary wide" onClick={close}>Rechazar</Button><small>Ubicación simulada: no se utilizará tu GPS real.</small></div></div>;
 }
+
+const stopGaps = [6, 8, 11, 9, 7];
+const formatClock = (date: Date) => date.toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", hour12: true });
+type FinishedTrip = { name: string; start: Date; minutes: number; stops: number };
 
 function MapExperience({ userMode }: { userMode: UserMode }) {
   const isMobile = useIsMobile();
@@ -159,11 +164,21 @@ function MapExperience({ userMode }: { userMode: UserMode }) {
   const [tripOpen, setTripOpen] = useState(false);
   const [stopIndex, setStopIndex] = useState(0);
   const [collaborating, setCollaborating] = useState(false);
+  const [boarding, setBoarding] = useState<string | null>(null);
+  const [live, setLive] = useState(false);
+  const [tripStart, setTripStart] = useState<Date | null>(null);
+  const [countdown, setCountdown] = useState(0);
+  const [finished, setFinished] = useState<FinishedTrip | null>(null);
+  const [routeCard, setRouteCard] = useState(false);
+  const [stopPoints, setStopPoints] = useState<Array<[number, number]>>([]);
+  const pathRef = useRef<SVGPathElement | null>(null);
   const sheetRef = useRef<HTMLElement | null>(null);
   const dragStart = useRef<{ y: number; translateY: number; time: number } | null>(null);
   const dragLast = useRef<{ y: number; time: number } | null>(null);
   const activeRoute = allRoutes.find(r => r.id === selected);
   const mapLine = routeLines[selected ?? "line10"] ?? defaultMapLine;
+  const labelRoute = activeRoute ?? routes[0];
+  const showLine = routeVisible || !!selected;
 
   useEffect(() => {
     const queuedRoute = sessionStorage.getItem("piurago-route");
@@ -183,8 +198,43 @@ function MapExperience({ userMode }: { userMode: UserMode }) {
     const p = window.setTimeout(() => setPeopleVisible(true), 3760);
     return () => { clearTimeout(r); clearTimeout(v); clearTimeout(p); };
   }, [destination]);
+  useLayoutEffect(() => {
+    const path = pathRef.current;
+    if (!path) { setStopPoints([]); return; }
+    const total = path.getTotalLength();
+    const n = labelRoute.stops.length;
+    setStopPoints(labelRoute.stops.map((_, i) => { const pt = path.getPointAtLength(total * i / (n - 1)); return [pt.x, pt.y]; }));
+  }, [showLine, mapLine.d, labelRoute.id]);
+  // Countdown to the next stop during a live trip
+  useEffect(() => {
+    if (!live) return;
+    const t = window.setInterval(() => setCountdown(c => Math.max(0, c - 1)), 1000);
+    return () => clearInterval(t);
+  }, [live]);
 
-  const chooseRoute = (id: string) => { setSelected(id); setDestination(false); setRouteVisible(true); setVehiclesVisible(true); setPeopleVisible(true); setSheet("peek"); setTripOpen(false); setStopIndex(0); };
+  const finishTrip = () => {
+    if (!activeRoute || !tripStart) return;
+    setFinished({ name: `${activeRoute.name} · ${activeRoute.operator}`, start: tripStart, minutes: Math.max(1, Math.round((Date.now() - tripStart.getTime()) / 60000)), stops: activeRoute.stops.length });
+    setLive(false); setCollaborating(false);
+  };
+  const advanceLive = () => {
+    if (!activeRoute) return;
+    if (stopIndex >= activeRoute.stops.length - 2) { setStopIndex(activeRoute.stops.length - 1); window.setTimeout(finishTrip, 0); return; }
+    setStopIndex(i => i + 1);
+    setCountdown(stopGaps[stopIndex + 1] * 60);
+  };
+  useEffect(() => { if (live && countdown === 0) advanceLive(); }, [countdown, live]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const chooseRoute = (id: string) => {
+    if (userMode === "logged") { setBoarding(id); return; }
+    setSelected(id); setDestination(false); setRouteVisible(true); setVehiclesVisible(true); setPeopleVisible(true); setSheet("peek"); setTripOpen(false); setStopIndex(0);
+  };
+  const confirmBoarding = () => {
+    if (!boarding) return;
+    setSelected(boarding); setDestination(false); setRouteVisible(true); setVehiclesVisible(true); setPeopleVisible(true);
+    setStopIndex(0); setCountdown(stopGaps[0] * 60); setTripStart(new Date()); setCollaborating(true); setLive(true); setSheet("mid"); setBoarding(null);
+  };
+  const backToMap = () => { setFinished(null); setSelected(null); setStopIndex(0); setRouteVisible(false); setVehiclesVisible(false); setPeopleVisible(false); setSheet("peek"); };
   const locate = () => { setLocating(true); window.setTimeout(() => setLocating(false), 700); };
   const sheetPositions = () => {
     const element = sheetRef.current;
@@ -234,15 +284,24 @@ function MapExperience({ userMode }: { userMode: UserMode }) {
     setSheet(nextSheet);
   };
 
-  return <div className="map-experience">
+  const mid = stopPoints[Math.floor(stopPoints.length / 2)] ?? [(mapLine.from[0] + mapLine.to[0]) / 2, (mapLine.from[1] + mapLine.to[1]) / 2];
+  const boardingRoute = allRoutes.find(r => r.id === boarding);
+  const livePanel = activeRoute && live ? <LiveTripPanel route={activeRoute} stopIndex={stopIndex} countdown={countdown} onAdvance={advanceLive} onFinish={finishTrip} /> : null;
+
+  return <div className={`map-experience ${live ? "is-live" : ""}`}>
     <div className={`map-canvas ${locating ? "is-locating" : ""} ${selected ? "has-trip" : ""}`}>
-      <svg className="city-map" viewBox={isMobile ? "0 0 1000 720" : "-500 -120 1600 960"} preserveAspectRatio="xMidYMid meet" aria-label="Mapa ilustrado de Piura">
+      <svg className="city-map" viewBox={isMobile ? "0 0 1000 720" : "-500 -120 1600 960"} preserveAspectRatio="xMidYMid meet" aria-label="Mapa ilustrado de Piura" onClick={() => setRouteCard(false)}>
         <rect className="map-ground" width="1000" height="720" />
         <path className="river" d="M-40 520 C160 400 290 610 480 485 S760 380 1040 470" />
         <g className="minor-roads"><path d="M40 90H960M10 185H900M70 300H1010M-20 410H930M120 610H980"/><path d="M135 10V700M280-20V680M430 30V720M590-20V680M760 20V720M900-10V700"/><path d="M20 650L860 20M-30 280L560 730M350-20L1040 580"/></g>
         <g className="major-roads"><path d="M0 205C240 250 420 165 660 220S890 350 1040 290"/><path d="M210 -30C260 170 360 300 485 400S720 590 780 750"/><path d="M-20 620C190 515 390 505 560 390S800 180 1020 115"/></g>
         <g className="district-labels"><text x="180" y="120">PIURA</text><text x="690" y="170">CASTILLA</text><text x="130" y="640">VEINTISÉIS DE OCTUBRE</text><text x="720" y="610">CATACAOS</text></g>
-        {(routeVisible || selected) && <g className="route-line"><path d={mapLine.d} /><circle cx={mapLine.from[0]} cy={mapLine.from[1]} r="8"/><circle cx={mapLine.to[0]} cy={mapLine.to[1]} r="8"/></g>}
+        {showLine && <g className="route-line" onMouseEnter={() => setRouteCard(true)} onClick={(e) => { e.stopPropagation(); setRouteCard(v => !v); }}>
+          <path ref={pathRef} className="route-path" d={mapLine.d} />
+          <path className="route-hit" d={mapLine.d} />
+          {stopPoints.map(([x, y], i) => <g key={i} className={`map-stop ${live && i === stopIndex ? "current" : ""} ${live && i < stopIndex ? "passed" : ""}`}><circle cx={x} cy={y} r="10" /><text x={x} y={y - 20} textAnchor="middle">{labelRoute.stops[i]}</text></g>)}
+          {routeCard && <foreignObject x={mid[0] + 18} y={mid[1] + 12} width="250" height="74"><div className="route-hover-card"><span><BusFront /></span><div><strong>{labelRoute.name} · {labelRoute.operator}</strong><small>{labelRoute.stops.length} paraderos · ETA {labelRoute.eta}</small></div></div></foreignObject>}
+        </g>}
         <g className="current-location"><circle cx="270" cy="545" r="25"/><circle cx="270" cy="545" r="9"/></g>
         {destination && <g className="destination-pin"><path d="M465 335c-17 0-31 14-31 31 0 24 31 52 31 52s31-28 31-52c0-17-14-31-31-31z"/><circle cx="465" cy="366" r="9"/></g>}
         {vehiclesVisible && <g className="vehicle-markers"><g transform="translate(380 430)"><circle r="23"/><text x="-11" y="7">10</text></g><g transform="translate(600 290)"><circle r="23"/><text x="-10" y="7">B</text></g></g>}
@@ -251,16 +310,50 @@ function MapExperience({ userMode }: { userMode: UserMode }) {
           {[[165, 245], [220, 335], [365, 205], [515, 470], [640, 410], [705, 120], [815, 345], [865, 560]].map(([x, y], index) => <g key={index} transform={`translate(${x} ${y})`}><circle cy="-5" r="4"/><path d="M-7 8c1-9 13-9 14 0M0 8v9M0 11l-7 7M0 11l7 7"/></g>)}
         </g>
       </svg>
-      <div className="map-search"><Button aria-label="Buscar destino" onClick={() => { setDestination(true); setSelected(null); }}><Search /><span>{destination ? "Mercado Central de Piura" : "¿A dónde quieres ir?"}</span>{destination && <X className="search-clear" onClick={(e) => { e.stopPropagation(); setDestination(false); setRouteVisible(false); }} />}</Button>{destination && !routeVisible && <div className="finding"><span className="finding-dot" />Buscando la mejor ruta…</div>}</div>
-      <div className="map-tools"><Button className="icon-button map-control" aria-label="Acercar"><Plus /></Button><Button className="icon-button map-control" aria-label="Alejar"><Minus /></Button><Button className="icon-button map-control locate" aria-label="Centrar ubicación" onClick={locate}><LocateFixed /></Button></div>
+      <div className="map-search">
+        <div className="search-box"><Button className="search-trigger" aria-label="Buscar destino" onClick={() => { setDestination(true); setSelected(null); setLive(false); }}><Search /><span>{destination ? "Mercado Central de Piura" : "¿A dónde quieres ir?"}</span>{destination && <X className="search-clear" onClick={(e) => { e.stopPropagation(); setDestination(false); setRouteVisible(false); }} />}</Button><Button className="icon-button search-locate" aria-label="Mi ubicación actual" onClick={locate}><LocateFixed /></Button></div>
+        <div className="weather-card"><CloudSun /><span>Piura · 29°C</span></div>
+        {destination && !routeVisible && <div className="finding"><span className="finding-dot" />Buscando la mejor ruta…</div>}
+      </div>
+      <div className="map-tools"><Button className="icon-button map-control" aria-label="Alejar"><Minus /></Button><Button className="icon-button map-control zoom-in" aria-label="Acercar"><Plus /></Button></div>
       {routeVisible && !selected && <div className="eta-bubble"><Clock3 /><div><small>Línea 10 más cercana</small><strong>4 min</strong></div></div>}
     </div>
 
-    <section ref={sheetRef} className={`route-sheet ${sheet} ${selected ? "trip-sheet" : ""}`}>
+    {!(live && !isMobile) && <section ref={sheetRef} className={`route-sheet ${sheet} ${selected ? "trip-sheet" : ""}`}>
       <div className="drag-zone" onPointerDown={onDragStart} onPointerMove={onDragMove} onPointerUp={onDragEnd} onPointerCancel={onDragEnd}><span className="drag-handle" /><Button className="sheet-toggle" aria-label="Cambiar tamaño del panel" onClick={() => setSheet(sheet === "peek" ? "mid" : sheet === "mid" ? "full" : "peek")}><ChevronDown /></Button></div>
-      {activeRoute ? <TripPanel route={activeRoute} userMode={userMode} open={tripOpen} setOpen={setTripOpen} stopIndex={stopIndex} advance={() => setStopIndex(i => Math.min(i + 1, activeRoute.stops.length - 1))} collaborating={collaborating} setCollaborating={setCollaborating} /> : <RouteList onGo={chooseRoute} />}
-    </section>
+      {livePanel ?? (activeRoute ? <TripPanel route={activeRoute} userMode={userMode} open={tripOpen} setOpen={setTripOpen} stopIndex={stopIndex} advance={() => setStopIndex(i => Math.min(i + 1, activeRoute.stops.length - 1))} collaborating={collaborating} setCollaborating={setCollaborating} /> : <RouteList onGo={chooseRoute} />)}
+    </section>}
+    {live && !isMobile && <aside className="live-column">{livePanel}</aside>}
+    {boardingRoute && <BoardingModal name={`${boardingRoute.name} - ${boardingRoute.operator}`} onCancel={() => setBoarding(null)} onConfirm={confirmBoarding} />}
+    {finished && <FinishedModal trip={finished} onBack={backToMap} />}
   </div>;
+}
+
+function LiveTripPanel({ route, stopIndex, countdown, onAdvance, onFinish }: { route: typeof routes[number]; stopIndex: number; countdown: number; onAdvance: () => void; onFinish: () => void }) {
+  const last = route.stops.length - 1;
+  const segment = stopGaps[stopIndex] * 60;
+  const progress = Math.min(100, ((segment - countdown) / segment) * 100);
+  const mm = String(Math.floor(countdown / 60)).padStart(2, "0");
+  const ss = String(countdown % 60).padStart(2, "0");
+  const etaFor = (i: number) => { let m = Math.ceil(countdown / 60); for (let k = stopIndex + 1; k < i; k++) m += stopGaps[k]; return `${m} min`; };
+  return <div className="sheet-content live-panel">
+    <div className="live-card live-header"><span className="live-avatar"><Signal /></span><div><div className="live-title"><strong>En viaje</strong><span className="live-badge">EN VIVO</span></div><small>Compartiendo tu ubicación como colaborador</small></div></div>
+    <div className="live-card live-progress"><div className="live-progress-row"><div><small>Paradero actual</small><strong>{route.stops[stopIndex]}</strong></div>{stopIndex < last && <div className="live-next"><small>Siguiente</small><span>{route.stops[stopIndex + 1]}</span><strong>{mm}:{ss}</strong></div>}</div><div className="live-bar"><span style={{ width: `${progress}%` }} /></div></div>
+    <div className="live-card live-stops"><div className="live-stops-head"><h3>Paraderos de la ruta</h3><span>{last - stopIndex} restantes</span></div>
+      {route.stops.map((stop, i) => <div key={stop} className={`live-stop ${i < stopIndex ? "passed" : i === stopIndex ? "current" : ""}`}><span className="live-stop-icon">{i < stopIndex ? <Check /> : i + 1}</span><div><strong>{stop}</strong>{i === stopIndex && <small>Estás aquí</small>}</div><em>{i < stopIndex ? "Pasado" : i === stopIndex ? "Ahora" : etaFor(i)}</em></div>)}
+      {stopIndex < last && <Button className="text-button live-skip" onClick={onAdvance}>Marcar como superada</Button>}
+    </div>
+    <Button className="danger wide" onClick={onFinish}><Flag />Finalizar viaje</Button>
+  </div>;
+}
+
+function BoardingModal({ name, onCancel, onConfirm }: { name: string; onCancel: () => void; onConfirm: () => void }) {
+  return <div className="modal-layer"><div className="location-modal" role="dialog" aria-modal="true" aria-labelledby="boarding-title"><div className="location-symbol"><BusFront /></div><h2 id="boarding-title">¿Ya estás a bordo de la {name}?</h2><p>Al confirmar, podremos mostrar tu avance durante el recorrido.</p><small className="modal-note">Tu ubicación se compartirá de forma anónima con otros usuarios solo mientras dure el viaje.</small><div className="modal-actions"><Button className="secondary" onClick={onCancel}>Cancelar</Button><Button className="primary" onClick={onConfirm}>Sí, confirmar abordaje</Button></div></div></div>;
+}
+
+function FinishedModal({ trip, onBack }: { trip: FinishedTrip; onBack: () => void }) {
+  const [reported, setReported] = useState(false);
+  return <div className="modal-layer"><div className="location-modal" role="dialog" aria-modal="true" aria-labelledby="finished-title"><div className="location-symbol"><Flag /></div><h2 id="finished-title">Viaje finalizado</h2><p className="finished-line">{trip.name}</p><dl className="finished-rows"><div><dt>Inicio</dt><dd>{formatClock(trip.start)}</dd></div><div><dt>Duración</dt><dd>{trip.minutes} min</dd></div><div><dt>Paraderos</dt><dd>{trip.stops}</dd></div></dl><small className="modal-note">Ya no estás compartiendo tu ubicación.</small><Button className="primary wide" onClick={onBack}>Volver al mapa</Button><Button className="secondary wide" onClick={() => setReported(true)} disabled={reported}>{reported ? "Gracias, recibimos tu reporte" : "Reportar un problema con este viaje"}</Button></div></div>;
 }
 
 function RouteList({ onGo }: { onGo: (id: string) => void }) {
