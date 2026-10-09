@@ -350,7 +350,11 @@ button { border: 0; cursor: pointer; }
 .live-stop.current { background: var(--primary-soft); }
 .live-stop.current .live-stop-icon { background: var(--primary); color: var(--primary-foreground); }
 .live-stop.current em { color: var(--primary); }
-.live-skip { margin-top: .4rem; font-size: .72rem; }
+.live-skip { display: flex; width: 100%; justify-content: center; align-items: center; margin-top: .6rem; padding: .5rem .2rem; border-radius: 10px; font-size: .74rem; letter-spacing: .01em; transition: background-color .2s ease, color .2s ease; }
+.live-skip:hover { background: var(--primary-soft); }
+.skip-label { position: relative; padding-bottom: 3px; }
+.skip-label::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1.5px; border-radius: 99px; background: currentColor; transform: scaleX(0); transform-origin: center; transition: transform .22s ease; }
+.live-skip:hover .skip-label::after, .live-skip:focus-visible .skip-label::after { transform: scaleX(1); }
 .pg-button.danger { background: var(--danger); color: var(--primary-foreground); min-height: 48px; border-radius: 12px; }
 .pg-button.danger:hover { background: oklch(0.54 0.2 28); }
 .modal-note { display: block; margin: 0 0 1.1rem; color: var(--muted-foreground); font-size: .74rem; line-height: 1.5; }

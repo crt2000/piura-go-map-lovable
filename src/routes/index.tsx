@@ -341,7 +341,7 @@ function LiveTripPanel({ route, stopIndex, countdown, onAdvance, onFinish }: { r
     <div className="live-card live-progress"><div className="live-progress-row"><div><small>Paradero actual</small><strong>{route.stops[stopIndex]}</strong></div>{stopIndex < last && <div className="live-next"><small>Siguiente</small><span>{route.stops[stopIndex + 1]}</span><strong>{mm}:{ss}</strong></div>}</div><div className="live-bar"><span style={{ width: `${progress}%` }} /></div></div>
     <div className="live-card live-stops"><div className="live-stops-head"><h3>Paraderos de la ruta</h3><span>{last - stopIndex} restantes</span></div>
       {route.stops.map((stop, i) => <div key={stop} className={`live-stop ${i < stopIndex ? "passed" : i === stopIndex ? "current" : ""}`}><span className="live-stop-icon">{i < stopIndex ? <Check /> : i + 1}</span><div><strong>{stop}</strong>{i === stopIndex && <small>Estás aquí</small>}</div><em>{i < stopIndex ? "Pasado" : i === stopIndex ? "Ahora" : etaFor(i)}</em></div>)}
-      {stopIndex < last && <Button className="text-button live-skip" onClick={onAdvance}>Marcar como superada</Button>}
+      {stopIndex < last && <Button className="text-button live-skip" onClick={onAdvance}><span className="skip-label">Marcar como superada</span></Button>}
     </div>
     <Button className="danger wide" onClick={onFinish}><Flag />Finalizar viaje</Button>
   </div>;
