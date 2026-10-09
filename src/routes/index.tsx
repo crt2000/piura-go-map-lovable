@@ -177,7 +177,7 @@ function MapExperience({ userMode }: { userMode: UserMode }) {
   const dragLast = useRef<{ y: number; time: number } | null>(null);
   const activeRoute = allRoutes.find(r => r.id === selected);
   const mapLine = routeLines[selected ?? "line10"] ?? defaultMapLine;
-  const labelRoute = activeRoute ?? routes[0];
+  const labelRoute = activeRoute ?? routes[0]!;
   const showLine = routeVisible || !!selected;
 
   useEffect(() => {
@@ -221,7 +221,7 @@ function MapExperience({ userMode }: { userMode: UserMode }) {
     if (!activeRoute) return;
     if (stopIndex >= activeRoute.stops.length - 2) { setStopIndex(activeRoute.stops.length - 1); window.setTimeout(finishTrip, 0); return; }
     setStopIndex(i => i + 1);
-    setCountdown(stopGaps[stopIndex + 1] * 60);
+    setCountdown((stopGaps[stopIndex + 1] ?? 6) * 60);
   };
   useEffect(() => { if (live && countdown === 0) advanceLive(); }, [countdown, live]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -232,7 +232,7 @@ function MapExperience({ userMode }: { userMode: UserMode }) {
   const confirmBoarding = () => {
     if (!boarding) return;
     setSelected(boarding); setDestination(false); setRouteVisible(true); setVehiclesVisible(true); setPeopleVisible(true);
-    setStopIndex(0); setCountdown(stopGaps[0] * 60); setTripStart(new Date()); setCollaborating(true); setLive(true); setSheet("mid"); setBoarding(null);
+    setStopIndex(0); setCountdown(6 * 60); setTripStart(new Date()); setCollaborating(true); setLive(true); setSheet("mid"); setBoarding(null);
   };
   const backToMap = () => { setFinished(null); setSelected(null); setStopIndex(0); setRouteVisible(false); setVehiclesVisible(false); setPeopleVisible(false); setSheet("peek"); };
   const locate = () => { setLocating(true); window.setTimeout(() => setLocating(false), 700); };
@@ -331,11 +331,11 @@ function MapExperience({ userMode }: { userMode: UserMode }) {
 
 function LiveTripPanel({ route, stopIndex, countdown, onAdvance, onFinish }: { route: typeof routes[number]; stopIndex: number; countdown: number; onAdvance: () => void; onFinish: () => void }) {
   const last = route.stops.length - 1;
-  const segment = stopGaps[stopIndex] * 60;
+  const segment = (stopGaps[stopIndex] ?? 6) * 60;
   const progress = Math.min(100, ((segment - countdown) / segment) * 100);
   const mm = String(Math.floor(countdown / 60)).padStart(2, "0");
   const ss = String(countdown % 60).padStart(2, "0");
-  const etaFor = (i: number) => { let m = Math.ceil(countdown / 60); for (let k = stopIndex + 1; k < i; k++) m += stopGaps[k]; return `${m} min`; };
+  const etaFor = (i: number) => { let m = Math.ceil(countdown / 60); for (let k = stopIndex + 1; k < i; k++) m += stopGaps[k] ?? 6; return `${m} min`; };
   return <div className="sheet-content live-panel">
     <div className="live-card live-header"><span className="live-avatar"><Signal /></span><div><div className="live-title"><strong>En viaje</strong><span className="live-badge">EN VIVO</span></div><small>Compartiendo tu ubicación como colaborador</small></div></div>
     <div className="live-card live-progress"><div className="live-progress-row"><div><small>Paradero actual</small><strong>{route.stops[stopIndex]}</strong></div>{stopIndex < last && <div className="live-next"><small>Siguiente</small><span>{route.stops[stopIndex + 1]}</span><strong>{mm}:{ss}</strong></div>}</div><div className="live-bar"><span style={{ width: `${progress}%` }} /></div></div>
